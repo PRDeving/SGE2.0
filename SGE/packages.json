@@ -1,0 +1,6 @@
+{
+    "game": [
+        "gameloop",
+        "scenemanager"
+    ]
+}
