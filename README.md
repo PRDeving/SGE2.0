@@ -274,6 +274,17 @@ SGE has some prebuilt modules that you can activate in the config.json
       });
     ```
 
+- ###support (Added 26 Feb 2017)
+  Checks API support
+
+  - SGE.Support.es6
+  - SGE.Support.workers
+  - SGE.Support.canvas
+  - SGE.Support.webgl
+  - SGE.Support.fileapi
+
+  returns true if the technology is supported in the browser or false if it's not
+
 
 #Another piece of code
 Gonna use a custom module, the scenes module and the gameloop module
