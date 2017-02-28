@@ -42,30 +42,34 @@
         console.log("%c Archivo de configuracion config.json cargado", csssuccess);
 
         var mods = [];
+        for(var x in Config.dependencies) {
+          mods.push(Config.dependencies[x]);
+        }
         for(var x in Config.modules){
           mods.push(ENGINE_PATH + "modules/" + Config.modules[x] + ".js");
         }
         SGE.Loader.Add(mods, false, true);
+        SGE.Loader.Run(function() {
 
-        var applicationjs;
-        $("script").each(function(){
-          if($(this).attr("app")){
-            applicationjs = $(this).attr("app");
-          }
-        });
-
-        console.log("%c Main app: ", csstitle ,applicationjs);
-
-        SGE.Loader.Add(applicationjs, function (d) {
-          var iret = boostrapfn.init();
-
-          SGE.Loader.Run(function() {
-            console.log("%c Iniciando aplicacion",csstitle)
-            boostrapfn.main(iret);
+          var applicationjs;
+          $("script").each(function(){
+            if($(this).attr("app")){
+              applicationjs = $(this).attr("app");
+            }
           });
-        }, true, true);
 
-        SGE.Loader.Run();
+          console.log("%c Main app: ", csstitle ,applicationjs);
+
+          SGE.Loader.Add(applicationjs, function (d) {
+            var iret = boostrapfn.init();
+
+            SGE.Loader.Run(function() {
+              console.log("%c Iniciando aplicacion",csstitle)
+              boostrapfn.main(iret);
+            });
+          }, true, true);
+          SGE.Loader.Run();
+        });
       },
 
       error: function(xhr, ajaxOptions, thrownError){
