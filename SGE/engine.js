@@ -42,13 +42,16 @@
         console.log("%c Archivo de configuracion config.json cargado", csssuccess);
 
         var mods = [];
-        for(var x in Config.dependencies) {
-          mods.push(Config.dependencies[x]);
-        }
-        for(var x in Config.modules){
-          mods.push(ENGINE_PATH + "modules/" + Config.modules[x] + ".js");
-        }
-        SGE.Loader.Add(mods, false, true);
+        if (Config.dependencies)
+          for(var x in Config.dependencies) {
+            mods.push(Config.dependencies[x]);
+          }
+        if (Config.modules)
+          for(var x in Config.modules){
+            mods.push(ENGINE_PATH + "modules/" + Config.modules[x] + ".js");
+          }
+
+        if (mods.length) SGE.Loader.Add(mods, false, true);
         SGE.Loader.Run(function() {
 
           var applicationjs;
@@ -107,6 +110,7 @@
     };
 
     function _Run(donefn) {
+      if (!loads.length) donefn();
       var lo;
 
       var mdt = 0;

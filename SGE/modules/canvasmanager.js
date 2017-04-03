@@ -4,7 +4,7 @@ SGE.NewModule('CanvasManager', new function(){
 
     var _init = function(cid){
         if(cid && typeof cid != "number"){
-            _canvas = document.getElementById(cid);
+            _canvas = document.querySelector(cid);
         }else{
             _canvas = document.createElement("canvas");
             document.getElementsByTagName("body")[0].appendChild(_canvas);
