@@ -26,13 +26,23 @@ SGE.NewModule('Scene', new function(){
                     loaded[1]++;
                 })
                 .fail(function(xhr, settings, exception){
-                    console.log("%c Scene "+name+" couldn't be loaded from "+callback, csswarning);
+                    console.warn("%c Scene "+name+" couldn't be loaded from "+callback, settings);
                 });
 
         }
     };
 
+    var _scdel = 0;
     var _LoadScene = function(name){
+      if (!_isLoaded()) {
+        console.warn('Scene loading delayed');
+        _scdel++;
+        if (_scdel++ > 5) return console.error('5 attempts, theres an error fetching ' + name);
+        return setTimeout(function() {
+          _LoadScene(name);
+        }, 300)
+      }
+
       var args = [];
       for (var i = 1; i < arguments.length; i++) args.push(arguments[i]);
       if(current && scenes[current].destructor) scenes[current].destructor.apply(this, args);
@@ -44,7 +54,7 @@ SGE.NewModule('Scene', new function(){
     };
 
     var _isLoaded = function(){
-        return (loaded[0] == loaded[1])? true : false;
+        return loaded[0] === loaded[1];
     }
 
     this.Add = _Add;

@@ -28,7 +28,7 @@
   };
 
   checkReady(function($) {
-    SGE.Loader = new _Loader_();
+    SGE.Loader = new _Loader2_();
 
     $.ajax({
       url: 'config.json',
@@ -88,96 +88,96 @@
 
 
 
-
-  // MODULO CARGADOR
-  //
-  // CARGA TODOS LOS ARCHIVOS PASADOS Y EJECUTA CALLBACK AL TERMINAR
-
-  function _Loader_() {
+  function _Loader2_() {
     var loads = [];
-    var t = 0;
-    var tc = 0;
 
     function _Add (scripts, callback, system, app) {
+      var m = typeof scripts === 'string' ? [scripts] : scripts;
+      var t = typeof scripts === 'object' ? 'object' : 'array';
+      var tot = t === 'array' ? m.length : Object.keys(m).length;
+
       loads.push({
-        modules: (typeof scripts === 'string') ? [scripts] : scripts,
-        type: typeof scripts === 'object' ? 'object' : 'array',
+        modules: m,
+        type: t,
+        total: tot,
+        loaded: 0,
         callback: callback || false,
         system: system || false,
         app: app || false,
       });
-      t++;
-    };
+    }
 
     function _Run(donefn) {
-      if (!loads.length) donefn();
-      var lo;
+      var blocks = loads.slice(0);
+      loads.length = 0;
+      var tot_blocks = blocks.length;
+      var loaded = 0;
 
-      var mdt = 0;
-      var mdc = 0;
-
-      var ldt = 0;
-      var ldc = 0;
-
-      while (loads.length > 0) {
-        lo = loads[0];
-
-        var r = lo.type === 'object' ? {} : [];
-        ldt = lo.type === 'object' ? Object.keys(lo.modules).length : lo.modules.length;
-        mdt += ldt;
-
-        for (var m in lo.modules) {
-          _LoadModule(lo.modules[m], m, lo.system, lo.app, lo.callback, function(idx, data, app, cb) {
-            var ret;
-            mdc ++;
-            ldc ++;
-
-            if (app) {
-              ret = (new Function(data))();
-            } else if (cb) {
-              switch (data[0]) {
-                case 'f':
-                  ret = new Function('return ' + data)();
-                  break;
-                case '[':
-                case '{':
-                  ret = JSON.parse(data);
-                  break;
-                case 'S':
-                  if (data.indexOf('SGE.NewModule') === 0)
-                    ret = new Function(data)();
-                  break;
-                default:
-                  ret = data;
-                  break;
-              }
-
-              if (ldt == ldc && cb) cb(r);
-
-            } else {
-              ret = (new Function(data))();
-            }
-
-            if (lo.type === 'object') r[idx] = ret;
-            else r.push(ret);
-
-            if (cb) cb(ret);
-            if (mdt == mdc && donefn) donefn();
-          });
-        }
-        loads.shift();
+      for (var i = 0; i < blocks.length; i++) {
+        _requireBlock(blocks[i]);
       }
 
-      function _LoadModule(module, idx, system, app, fn, cb) {
+      function _requireBlock(block) {
+        var ret = block.type === 'object' ? {} : (block.modules.length > 1 ? [] : false);
+
+        function toRet(d, id) {
+          switch (block.type) {
+            case 'object':
+              ret[id] = d;
+              break;
+            default:
+              if (block.modules.length > 1) ret.push(d);
+              else ret = d;
+          }
+        }
+
+        for (var m in block.modules) {
+          _requireModule(block.modules[m], block, m);
+        }
+
+        function _requireModule(url, block, id) {
+          _req(url, block.app, block.system, function(data) {
+            block.loaded++;
+            if (SGE.Config.Debug)
+              console.log('Got module: ' + url, block.loaded, '/', block.total);
+            if (block.app) {
+              toRet((new Function(data))(), id);
+            } else {
+              if (/\w+.json$/.test(url)) { toRet(JSON.parse(data), id); }
+              else if (/\w+.js$/.test(url)) {
+                switch (data[0]) {
+                  case 'S':
+                    if (data.indexOf('SGE.') === 0)
+                      toRet(new Function(data)(), id);
+                    break;
+                  default:
+                    toRet(new Function('return ' + data)(), id);
+                    break;
+                }
+              } else {
+                toRet(data, id);
+              }
+            }
+
+            if (block.total == block.loaded) {
+              loaded++;
+              if (block.callback) block.callback(ret);
+              if (tot_blocks == loaded && donefn) donefn();
+            }
+          });
+        }
+      }
+
+      function _req(url, app, system, done) {
         $.ajax({
-          url: module,
+          url: url,
           dataType: 'text',
           method: 'GET',
           cache: Config.ModuleCache || false,
 
           success: function(data){
-            console.log('%c Cargado: ' + this.url, csssuccess, mdc + 1,"/", mdt);
-            cb(idx, data, app, fn);
+            console.log('%c Cargado: ' + this.url, csssuccess);
+            if (done) done(data);
           },
           error: function(xhr, ajaxOptions, thrownError){
             if(system){
@@ -186,20 +186,138 @@
               console.log('%c Error cargando dependencias de aplicacion \n', csswarning);
             }
 
-            if(xhr.status==404){
-              console.log(this.url + " %c no existe", csswarning);
-            }else if(xhr.status==200){
-              console.log("%c Error en "+ this.url, csswarning);
+            if(xhr.status == 404){
+              console.log(url + " %c no existe", csswarning);
+            }else if(xhr.status == 200){
+              console.log("%c Error en "+ url, csswarning);
               console.log(thrownError);
             }
           }
         });
       }
+
     }
 
     this.Add = _Add;
     this.Run = _Run;
   }
+  // SGE.Loader2 = new _Loader2_();
+
+
+
+  // MODULO CARGADOR
+  //
+  // CARGA TODOS LOS ARCHIVOS PASADOS Y EJECUTA CALLBACK AL TERMINAR
+
+  // function _Loader_() {
+  //   var loads = [];
+  //   var t = 0;
+  //   var tc = 0;
+  //
+  //   function _Add (scripts, callback, system, app) {
+  //     loads.push({
+  //       modules: (typeof scripts === 'string') ? [scripts] : scripts,
+  //       type: typeof scripts === 'object' ? 'object' : 'array',
+  //       callback: callback || false,
+  //       system: system || false,
+  //       app: app || false,
+  //     });
+  //     t++;
+  //   };
+  //
+  //   function _Run(donefn) {
+  //     if (!loads.length) donefn();
+  //     var lo;
+  //
+  //     var mdt = 0;
+  //     var mdc = 0;
+  //
+  //     var ldt = 0;
+  //     var ldc = 0;
+  //
+  //     while (loads.length > 0) {
+  //       lo = loads[0];
+  //
+  //       var r = lo.type === 'object' ? {} : [];
+  //       ldt = lo.type === 'object' ? Object.keys(lo.modules).length : lo.modules.length;
+  //       mdt += ldt;
+  //
+  //       for (var m in lo.modules) {
+  //         _LoadModule(lo.modules[m], m, lo.system, lo.app, lo.callback, function(idx, data, app, cb) {
+  //           var ret;
+  //           mdc ++;
+  //           ldc ++;
+  //
+  //           if (app) {
+  //             ret = (new Function(data))();
+  //           } else if (cb) {
+  //             switch (data[0]) {
+  //               case 'f':
+  //                 ret = new Function('return ' + data)();
+  //                 break;
+  //               case '[':
+  //               case '{':
+  //                 ret = JSON.parse(data);
+  //                 break;
+  //               case 'S':
+  //                 if (data.indexOf('SGE.NewModule') === 0)
+  //                   ret = new Function(data)();
+  //                 break;
+  //               default:
+  //                 ret = data;
+  //                 break;
+  //             }
+  //
+  //             // if (ldt == ldc && cb) cb(ret);
+  //
+  //           } else {
+  //             ret = (new Function(data))();
+  //           }
+  //
+  //           if (lo.type === 'object') r[idx] = ret;
+  //           else r.push(ret);
+  //
+  //           console.log(ldt, ldc, cb);
+  //           if (ldt == ldc && cb) cb(r);
+  //           // if (cb) cb(ret);
+  //           if (mdt == mdc && donefn) donefn();
+  //         });
+  //       }
+  //       loads.shift();
+  //     }
+  //
+  //     function _LoadModule(module, idx, system, app, fn, cb) {
+  //       $.ajax({
+  //         url: module,
+  //         dataType: 'text',
+  //         method: 'GET',
+  //         cache: Config.ModuleCache || false,
+  //
+  //         success: function(data){
+  //           console.log('%c Cargado: ' + this.url, csssuccess, mdc + 1,"/", mdt);
+  //           cb(idx, data, app, fn);
+  //         },
+  //         error: function(xhr, ajaxOptions, thrownError){
+  //           if(system){
+  //             console.log('%c Error cargando Modulos de sistema', csswarning);
+  //           }else{
+  //             console.log('%c Error cargando dependencias de aplicacion \n', csswarning);
+  //           }
+  //
+  //           if(xhr.status==404){
+  //             console.log(this.url + " %c no existe", csswarning);
+  //           }else if(xhr.status==200){
+  //             console.log("%c Error en "+ this.url, csswarning);
+  //             console.log(thrownError);
+  //           }
+  //         }
+  //       });
+  //     }
+  //   }
+  //
+  //   this.Add = _Add;
+  //   this.Run = _Run;
+  // }
 
 
   //// CORE TOOLS
